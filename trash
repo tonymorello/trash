@@ -1,0 +1,54 @@
+#!/bin/bash
+
+
+sudo mkdir -p /tmp/trash/
+
+case $1 in
+	"-e") echo "Do you really want to empty the trash? [yes/no]"
+		  read confirm
+		  while [ $confirm != "yes" ]; do
+			  if [ $confirm == "no" ]; then
+				  echo "Operation canceled"; break
+			  else
+				  echo "you need to type \"yes\" to confirm or \"no\" to cancel"
+				  read confirm
+			  fi
+		  done
+		  if [ $confirm == "yes" ]; then
+			  sudo rm -r /tmp/trash/* &> /dev/null; rm -r /tmp/trash/.* &> /dev/null; echo "Trash can emptied!"
+		  fi
+	;;
+	"") echo "No file name provided..."
+	;;
+	"-l") echo "Content of trash can:"; ls /tmp/trash/
+	;;
+	"-r") echo would you like to restore \"$2\" to its original location: $(find /tmp/trash/ -name "$2") [yes/no]?
+		  read confirm
+		   while [ $confirm != "yes" ]; do
+			  if [ $confirm == "no" ]; then
+				  echo "Operation canceled"; break
+			  else
+				  echo "you need to type \"yes\" to confirm or \"no\" to cancel"
+				  read confirm
+			  fi
+		  done
+		  if [ $confirm == "yes" ]; then
+			  sudo cp -r -p /tmp/trash/$2$(cat /tmp/trash/.$2) $(cat /tmp/trash/.$2)
+			  sudo rm -r /tmp/trash/$2 /tmp/trash/.$2
+		  fi
+	;;
+*) if [ ! -d  $(readlink -f $1) ]; then
+			if [ ! -f  $(readlink -f $1) ]; then
+				echo "File or directory not found!"
+			fi
+	   else
+			mkdir /tmp/trash/${1%/}
+			sudo cp -r --parents $(readlink -f $1) -p /tmp/trash/${1%/}/
+			sudo readlink -f $1 > /tmp/trash/.${1%/}
+			sudo rm -r $(readlink -f $1)
+			echo "File \"$(readlink -f $1)\" was trashed"
+	   fi
+
+	;;
+esac
+
