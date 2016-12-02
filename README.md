@@ -2,7 +2,7 @@
 Simple bash script to emulate a CLI recycle bin feature for files and directories
 
 ## Installation
-Just paste the trash file into your /usr/bin/ folder and give 0655 permissions to only allow sudo execution
+Just paste the trash file into your /usr/bin/ and make sure owner/group are both root
 
 ## Usage
     $trash [file1] [file2]...
