@@ -6,16 +6,16 @@ Just paste the trash file into your /usr/bin/ folder and give 0655 permissions t
 
 ## Usage
     $trash [file1] [file2]...
-moves the given file/s or directory to the trash folder (/tmp/trash/)
+Moves the given file/s or directory to the trash folder (/tmp/trash/)
     
     $trash -l
-shows the content of the trash folder
+Shows the content of the trash folder
     
     $trash -r file1 [-r file2 -r file3 ...]
-restores file/s to their previous locations with the original attributes
+Restores file/s to their previous locations with the original attributes
     
     $trash -e
-empties the trash bin
+Empties the trash bin
 
     $trash -v
 Verbose. Add some additional information about the performed operation.
