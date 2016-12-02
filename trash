@@ -1,54 +1,108 @@
 #!/bin/bash
 
-
 sudo mkdir -p /tmp/trash/
+sudo chmod ugo+rwx /tmp/trash/
 
-case $1 in
-	"-e") echo "Do you really want to empty the trash? [yes/no]"
-		  read confirm
-		  while [ $confirm != "yes" ]; do
-			  if [ $confirm == "no" ]; then
-				  echo "Operation canceled"; break
-			  else
-				  echo "you need to type \"yes\" to confirm or \"no\" to cancel"
-				  read confirm
-			  fi
-		  done
-		  if [ $confirm == "yes" ]; then
-			  sudo rm -r /tmp/trash/* &> /dev/null; rm -r /tmp/trash/.* &> /dev/null; echo "Trash can emptied!"
-		  fi
-	;;
-	"") echo "No file name provided..."
-	;;
-	"-l") echo "Content of trash can:"; ls /tmp/trash/
-	;;
-	"-r") echo would you like to restore \"$2\" to its original location: $(find /tmp/trash/ -name "$2") [yes/no]?
-		  read confirm
-		   while [ $confirm != "yes" ]; do
-			  if [ $confirm == "no" ]; then
-				  echo "Operation canceled"; break
-			  else
-				  echo "you need to type \"yes\" to confirm or \"no\" to cancel"
-				  read confirm
-			  fi
-		  done
-		  if [ $confirm == "yes" ]; then
-			  sudo cp -r -p /tmp/trash/$2$(cat /tmp/trash/.$2) $(cat /tmp/trash/.$2)
-			  sudo rm -r /tmp/trash/$2 /tmp/trash/.$2
-		  fi
-	;;
-*) if [ ! -d  $(readlink -f $1) ]; then
-			if [ ! -f  $(readlink -f $1) ]; then
-				echo "File or directory not found!"
+while getopts hvelr: opt;
+do
+	case $opt in
+		"h") 	echo "Usage: trash [OPTIONS]... [FILE]..."
+				echo "       trash [FILES]..."
+				exit 1
+		;;
+		"v") 	verbose="-v"
+		;;
+		"e") 	echo "Empty the trash bin? (this operation is IRREVERSIBLE) [yes/no]"
+				read confirm
+				while [[ $confirm != "yes" ]]; do
+				  	if [[ $confirm == "no" ]]; then
+					  	echo "Operation canceled."; break
+				  	else
+					  	echo "Type \"yes\" to confirm or \"no\" to cancel"
+					  	read confirm
+				  	fi
+			  	done
+			  	if [[ $confirm == "yes" ]]; then
+				  	sudo rm -r $verbose /tmp/trash/* 2> /dev/null
+				  	sudo rm -r $verbose /tmp/trash/.* 2> /dev/null
+				  	echo "Trash bin emptied!"
+			  	fi
+				exit 1
+		;;
+		"l")	if [[ $(ls /tmp/trash/ | wc -l) -gt 0 ]]; then
+					echo
+					echo "Content of trash can:"
+					echo "---------------------"
+					ls /tmp/trash/
+					echo
+					echo "TOTAL FILES: $(ls /tmp/trash/ | wc -l)"
+					echo
+				else
+					echo "Trash can is empty."
+				fi
+				exit 1
+		;;
+		"r")	restore+=($OPTARG)
+		;;
+		esac
+done
+
+
+if [[ ${#restore[@]} -gt 0 ]]; then
+	gconfirm=false
+
+	for var in "${restore[@]}"; do
+		if [[ $(ls /tmp/trash/ | wc -l) -eq 0 ]]; then
+			echo "Trash can is empty."
+		elif [[ -e "/tmp/trash/.$var" ]]; then
+			originpath=$(cat /tmp/trash/.$var)
+			if [[ $gconfirm == false ]]; then
+				if [[ ${#restore[@]} -gt 1 ]]; then
+					echo Restore \"$var\" to its location: $originpath [yes/no/all]?
+				else
+					echo Restore \"$var\" to its location: $originpath [yes/no]?
+				fi
+				read confirm
 			fi
-	   else
-			mkdir /tmp/trash/${1%/}
-			sudo cp -r --parents $(readlink -f $1) -p /tmp/trash/${1%/}/
-			sudo readlink -f $1 > /tmp/trash/.${1%/}
-			sudo rm -r $(readlink -f $1)
-			echo "File \"$(readlink -f $1)\" was trashed"
-	   fi
-
-	;;
-esac
-
+			while [[ $confirm != "yes" && $gconfirm == false ]]; do
+				if [[ $confirm == "no" ]]; then
+					echo "Operation canceled";
+					exit 1
+				elif [[ $confirm == "all" ]]; then
+					gconfirm=true; break
+				else
+					if [[ ${#restore[@]} -gt 1 ]]; then
+						echo "Type \"yes\" to confirm or \"no\" to cancel \"all\" to restore all."
+					else
+						echo "Type \"yes\" to confirm or \"no\" to cancel."
+					fi
+					read confirm
+				fi
+			done
+			sudo cp -r -p "/tmp/trash/$var$originpath" "$originpath"
+			sudo rm -r /tmp/trash/$var /tmp/trash/.$var
+			if [[ $verbose ]]; then
+				echo "Restored $originpath"
+			fi
+		else
+			echo "File $var is not present in trash can."
+		fi
+	done
+else
+	shift $((OPTIND-1))
+	for var in "$@"
+	do
+		originpath=$(readlink -f $var)
+		if [[ ! -d $originpath && ! -f $originpath ]]; then
+			echo "$var not found!"
+		else
+			sudo mkdir -p /tmp/trash/${var%/}
+			sudo cp -r --parents $(readlink -f $var) -p /tmp/trash/${var%/}/
+			sudo echo "$originpath" > /tmp/trash/.${var%/}
+			sudo rm -r $originpath
+			if [[ $verbose ]]; then
+				echo "File \"$originpath\" was trashed"
+			fi
+		fi
+	done
+fi
