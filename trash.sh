@@ -8,7 +8,7 @@ if [ ! -d "$trashpath" ]; then
 fi
 
 restorelist=()
-version=1.4.1
+version="1.4.2"
 
 list(){
 	if [[ $(ls $trashpath | wc -l) -gt 0 ]]; then
@@ -80,6 +80,7 @@ restore(){
 
 purge(){
 	gconfirm=false
+	purgeall=false
 	for var in "${purgelist[@]}"; do
 		if [[ $(ls $trashpath | wc -l) -eq 0 ]]; then
 			echo "Trash can is empty."
@@ -87,9 +88,9 @@ purge(){
 			originpath=$(cat $trashpath.$var)
 			if [[ $gconfirm == false && $purgeall == false ]]; then
 				if [[ ${#restorelist[@]} -gt 1 ]]; then
-					echo Purge \"$var\"? [yes/no/all]?
+					sudo echo "Purge \"$var\"? [yes/no/all]?"
 				else
-					echo Purge \"$var\"? [yes/no]?
+					sudo echo "Purge \"$var\"? [yes/no]?"
 				fi
 				read confirm
 			fi
@@ -98,11 +99,11 @@ purge(){
 					echo "File not purged"
 					break
 				elif [[ $confirm == "all" || $purgeall == true ]]; then
-					echo The following files will be purged:
+					echo "The following files will be purged:"
 					for fname in "${purgelist[@]}";do
 						echo $fname
 					done
-					echo are you sure? [yes/no]
+					echo "are you sure? [yes/no]"
 					read confirmall
 					if [[ $confirmall == "yes" ]]; then
 						gconfirm=true; break
@@ -135,7 +136,7 @@ trash(){
 	for var in "$@"
 	do
 		originpath=$(readlink -f $var)
-		if [[ ! -d $originpath && ! -f $originpath ]]; then
+		if [[ ! -e $originpath ]]; then
 			echo "$var not found!"
 		else
 			sudo mkdir -p $trashpath${var%/}
@@ -150,9 +151,11 @@ trash(){
 }
 
 help(){
+	echo "trash v.$version"
 	echo
-	echo "Usage: trash [OPTIONS]... [FILE]..."
-	echo "       trash [FILES]..."
+	echo "Usage:  trash <files...>"
+	echo "        trash [options]"
+	echo "        trash [options] <file>"
 	echo
 	echo "  -h	Show this help screen"
 	echo "  -V	Show current version"
@@ -162,6 +165,8 @@ help(){
 	echo "  -l	List files in trash can"
 	echo "  -r	Restore specific file from trash can"
 	echo "  -R	Restore ALL files from trash can"
+	echo
+	echo "Please report bugs on https://aur.archlinux.org/packages/trash/"
 	echo
 	exit 1
 }
@@ -173,6 +178,7 @@ empty(){
 		if [[ $confirm == "no" ]]; then
 			echo "Operation canceled."; break
 		else
+			echo "I'm about to empty the trash can..."
 			echo "Type \"yes\" to confirm or \"no\" to cancel"
 			read confirm
 		fi
@@ -221,16 +227,16 @@ do
 		esac
 done
 
-if [[ ${#restorelist[@]} -gt 0 ]]; then
-	restore
+if [[ ${#restorelist[@]} -gt 0 || ${#purgelist[@]} -gt 0 ]]; then
+	if [[ ${#restorelist[@]} -gt 0 ]]; then
+		restore
+	fi
+	if [[ ${#purgelist[@]} -gt 0 ]]; then
+		purge
+	fi
+	exit 1
 else
 	shift $((OPTIND-1))
 	trash $@
-fi
-
-if [[ ${#purgelist[@]} -gt 0 ]]; then
-	purge
-else
-	shift $((OPTIND-1))
-	trash $@
+	exit 1
 fi
