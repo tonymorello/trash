@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="1.5"
+
 trashpath=~/.trash/
 
 if [ ! -d "$trashpath" ]; then
@@ -8,7 +10,8 @@ if [ ! -d "$trashpath" ]; then
 fi
 
 restorelist=()
-version="1.4.2"
+restoreall=false
+purgeall=false
 
 list(){
 	if [[ $(ls $trashpath | wc -l) -gt 0 ]]; then
@@ -24,6 +27,14 @@ list(){
 	fi
 }
 
+checkrights(){
+	if [[ -r $1 && -w $1 ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
 restore(){
 	gconfirm=false
 	for var in "${restorelist[@]}"; do
@@ -33,24 +44,22 @@ restore(){
 			originpath=$(cat $trashpath.$var)
 			if [[ $gconfirm == false && $restoreall == false ]]; then
 				if [[ ${#restorelist[@]} -gt 1 ]]; then
-					echo Restore \"$var\" to its location: $originpath [yes/no/all]?
+					read -p "Restore \"$var\" to its location: $originpath [y]es/[n]o/[a]ll? " confirm
 				else
-					echo Restore \"$var\" to its location: $originpath [yes/no]?
+					read -p "Restore \"$var\" to its location: $originpath [y]es/[n]o? " confirm
 				fi
-				read confirm
 			fi
-			while [[ $confirm != "yes" && $gconfirm == false ]]; do
-				if [[ $confirm == "no" ]]; then
+			while [[ $confirm != "y" && $gconfirm == false ]]; do
+				if [[ $confirm == "n" ]]; then
 					echo "File not restored"
 					break
-				elif [[ $confirm == "all" || $restoreall == true ]]; then
+				elif [[ $confirm == "a" || $restoreall == true ]]; then
 					echo The following files will be restored:
 					for fname in "${restorelist[@]}";do
 						echo $fname
 					done
-					echo are you sure? [yes/no]
-					read confirmall
-					if [[ $confirmall == "yes" ]]; then
+					read confirmall -p "are you sure [y]es/[n]o? "
+					if [[ $confirmall == "y" ]]; then
 						gconfirm=true; break
 					else
 						echo "Operation canceled"
@@ -58,16 +67,23 @@ restore(){
 					fi
 				else
 					if [[ ${#restorelist[@]} -gt 1 ]]; then
-						echo "Type \"yes\" to confirm or \"no\" to cancel \"all\" to restore all."
+						read -p "Type \"y\" to confirm or \"n\" to cancel \"a\" to restore all: " confirm
 					else
-						echo "Type \"yes\" to confirm or \"no\" to cancel."
+						read -p "Type \"y\" to confirm or \"n\" to cancel: " confirm
 					fi
-					read confirm
 				fi
 			done
-			if [[ $confirm == "yes" || $gconfirm == true ]];then
-				sudo cp -r -p "$trashpath$var$originpath" "$originpath"
-				sudo rm -r $trashpath$var $trashpath.$var
+			if [[ $confirm == "y" || $gconfirm == true ]];then
+				checkrights $trashpath$var$originpath
+				if [[ $? -eq 0 ]]; then
+					cp -r -p "$trashpath$var$originpath" "$originpath"
+					rm -r $trashpath$var $trashpath.$var
+				else
+					sudo -n true 2>/dev/null || echo "You need to be root to restore $originpath"
+					sudo cp -r -p "$trashpath$var$originpath" "$originpath"
+					sudo rm -r $trashpath$var $trashpath.$var
+				fi
+
 			fi
 			if [[ $verbose ]]; then
 				echo "Restored $originpath"
@@ -80,7 +96,6 @@ restore(){
 
 purge(){
 	gconfirm=false
-	purgeall=false
 	for var in "${purgelist[@]}"; do
 		if [[ $(ls $trashpath | wc -l) -eq 0 ]]; then
 			echo "Trash can is empty."
@@ -88,24 +103,22 @@ purge(){
 			originpath=$(cat $trashpath.$var)
 			if [[ $gconfirm == false && $purgeall == false ]]; then
 				if [[ ${#restorelist[@]} -gt 1 ]]; then
-					sudo echo "Purge \"$var\"? [yes/no/all]?"
+					read -p "Purge \"$var\"? [y]es/[n]o/[a]ll? " confirm
 				else
-					sudo echo "Purge \"$var\"? [yes/no]?"
+					read -p "Purge \"$var\"? [y]es/[n]o? " confirm
 				fi
-				read confirm
 			fi
-			while [[ $confirm != "yes" && $gconfirm == false ]]; do
-				if [[ $confirm == "no" ]]; then
+			while [[ $confirm != "y" && $gconfirm == false ]]; do
+				if [[ $confirm == "n" ]]; then
 					echo "File not purged"
 					break
-				elif [[ $confirm == "all" || $purgeall == true ]]; then
+				elif [[ $confirm == "a" || $purgeall == true ]]; then
 					echo "The following files will be purged:"
 					for fname in "${purgelist[@]}";do
 						echo $fname
 					done
-					echo "are you sure? [yes/no]"
-					read confirmall
-					if [[ $confirmall == "yes" ]]; then
+					read -p  "Continue [y]es/[n]o? " confirmall
+					if [[ $confirmall == "y" ]]; then
 						gconfirm=true; break
 					else
 						echo "Operation canceled"
@@ -113,15 +126,20 @@ purge(){
 					fi
 				else
 					if [[ ${#purgelist[@]} -gt 1 ]]; then
-						echo "Type \"yes\" to confirm or \"no\" to cancel \"all\" to restore all."
+						read -p "Type \"y\" to confirm or \"n\" to cancel \"a\" to restore all: " confirm
 					else
-						echo "Type \"yes\" to confirm or \"no\" to cancel."
+						read -p "Type \"y\" to confirm or \"n\" to cancel: " confirm
 					fi
-					read confirm
 				fi
 			done
-			if [[ $confirm == "yes" || $gconfirm == true ]];then
-				sudo rm -r $trashpath$var $trashpath.$var
+			if [[ $confirm == "y" || $gconfirm == true ]];then
+				checkrights $trashpath$var$originpath
+				if [[ $? -eq 0 ]]; then
+					rm -r $trashpath$var $trashpath.$var
+				else
+					sudo -n true 2>/dev/null || echo "You need to be root to purge $originpath"
+					sudo rm -r $trashpath$var $trashpath.$var
+				fi
 			fi
 			if [[ $verbose ]]; then
 				echo "File $var was purged."
@@ -136,15 +154,30 @@ trash(){
 	for var in "$@"
 	do
 		originpath=$(readlink -f $var)
+		basename=$(basename $originpath)
+		file=${basename%.*}
+
 		if [[ ! -e $originpath ]]; then
 			echo "$var not found!"
 		else
-			sudo mkdir -p $trashpath${var%/}
-			sudo cp -r --parents $(readlink -f $var) -p $trashpath${var%/}/
-			sudo echo "$originpath" > $trashpath.${var%/}
-			sudo rm -r $originpath
-			if [[ $verbose ]]; then
-				echo "File \"$originpath\" was trashed"
+			checkrights $originpath
+			if [[ $? -eq 0 ]]; then
+				mkdir -p $trashpath${file%/}
+				cp -r --parents $(readlink -f $var) -p $trashpath${file%/}/
+				echo "$originpath" > $trashpath.${file%/}
+				rm -rf $originpath
+				if [[ $verbose ]]; then
+					echo "File \"$originpath\" was trashed"
+				fi
+			else
+				sudo -n true 2>/dev/null || echo "You need to be root to trash $originpath"
+				sudo mkdir -p $trashpath${file%/}
+				sudo cp -r --parents $(readlink -f $var) -p $trashpath${file%/}/
+				sudo echo "$originpath" > $trashpath.${file%/}
+				sudo rm -rf $originpath
+				if [[ $verbose ]]; then
+					echo "File \"$originpath\" was trashed"
+				fi
 			fi
 		fi
 	done
@@ -172,26 +205,29 @@ help(){
 }
 
 empty(){
-	echo "Empty the trash bin? (this operation is IRREVERSIBLE) [yes/no]"
-	read confirm
-	while [[ $confirm != "yes" ]]; do
-		if [[ $confirm == "no" ]]; then
-			echo "Operation canceled."; break
-		else
-			echo "I'm about to empty the trash can..."
-			echo "Type \"yes\" to confirm or \"no\" to cancel"
-			read confirm
+	if [[ $(sudo -n true 2>/dev/null && echo 0 || echo 1) -eq 0 ]]; then
+		read -p "Empty the trash bin? (this operation is IRREVERSIBLE) [y]es/[n]o: " confirm
+		while [[ $confirm != "y" ]]; do
+			if [[ $confirm == "n" ]]; then
+				echo "Operation canceled."; exit 1
+			else
+				echo "I'm about to empty the trash can..."
+				read -p "Type \"y\" to confirm or \"n\" to cancel: " confirm
+			fi
+		done
+		if [[ $confirm == "y" ]]; then
+			sudo rm -r $verbose $trashpath* 2> /dev/null
+			sudo rm -r $verbose $trashpath.* 2> /dev/null
+			echo "Trash bin emptied!"
 		fi
-	done
-	if [[ $confirm == "yes" ]]; then
-		sudo rm -r $verbose $trashpath* 2> /dev/null
-		sudo rm -r $verbose $trashpath.* 2> /dev/null
-		echo "Trash bin emptied!"
+	else
+		echo "Please run sudo trash -e to empty the trash can."
+		exit 1
 	fi
 }
 
 restoreallfiles(){
-	for f in $(find $trashpath -maxdepth 1 -name '.*');do
+	for f in $(find $trashpath -maxdepth 1 -mindepth 1 -name '.*');do
 		string="${f##/*/.}"
 		restorelist+=($string)
 		restoreall=true
@@ -203,7 +239,7 @@ restoreallfiles(){
 
 ######################################################################
 
-while getopts hVvelp:r:R opt;
+while getopts hVvelp:r:Rc: opt;
 do
 	case $opt in
 		"h")	help
