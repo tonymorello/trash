@@ -58,7 +58,7 @@ restore(){
 					for fname in "${restorelist[@]}";do
 						echo $fname
 					done
-					read confirmall -p "are you sure [y]es/[n]o? "
+					read -p "are you sure [y]es/[n]o? " confirmall 
 					if [[ $confirmall == "y" ]]; then
 						gconfirm=true; break
 					else
