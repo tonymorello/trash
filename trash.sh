@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version="1.5"
+version="1.5.1"
 
 trashpath=~/.trash/
 
@@ -199,7 +199,7 @@ help(){
 	echo "  -r	Restore specific file from trash can"
 	echo "  -R	Restore ALL files from trash can"
 	echo
-	echo "Please report bugs on https://aur.archlinux.org/packages/trash/"
+	echo "To report bugs visit https://github.com/tonymorello/trash/issues"
 	echo
 	exit 1
 }
