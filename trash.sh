@@ -273,6 +273,14 @@ if [[ ${#restorelist[@]} -gt 0 || ${#purgelist[@]} -gt 0 ]]; then
 	exit 1
 else
 	shift $((OPTIND-1))
-	trash $@
+	if [[ ${#@} -gt 0 ]]; then
+		trash $@
+	else
+		echo "Usage:  trash <files...>"
+		echo "        trash [options]"
+		echo "        trash [options] <file>"
+		echo ""
+		echo "Help:   trash -h"
+	fi
 	exit 1
 fi
