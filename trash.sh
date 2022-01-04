@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version="1.5.1"
+version="1.5.2"
 
 trashpath=~/.trash/
 
